@@ -1,12 +1,14 @@
 const { Router } = require('express');
 const multiparty = require('multiparty');
 
+const { authMiddleware } = require('../lib/auth');
 const logger = require('../lib/logger');
 const { parseHcl } = require('../lib/util');
 const storage = require('../lib/storage');
 const { saveModule, getModuleLatestVersion, findOneModule } = require('../stores/store');
 
 const router = Router();
+router.use(authMiddleware);
 
 // register a module with version
 router.post('/:namespace/:name/:provider/:version', (req, res, next) => {

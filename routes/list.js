@@ -1,10 +1,12 @@
 const { Router } = require('express');
 const _ = require('lodash');
 
+const { authMiddleware } = require('../lib/auth');
 const { findAllModules, getModuleVersions } = require('../stores/store');
 const { makeUrl } = require('../lib/util');
 
 const router = Router();
+router.use(authMiddleware);
 
 // https://www.terraform.io/docs/registry/api.html#search-modules
 router.get('/search', async (req, res) => {

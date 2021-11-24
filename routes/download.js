@@ -1,12 +1,13 @@
 const { Router } = require('express');
 
+const { authMiddleware } = require('../lib/auth');
 const { findOneModule, getModuleLatestVersion, increaseModuleDownload } = require('../stores/store');
 const { getModule } = require('../lib/storage');
 
 const router = Router();
 
 // https://www.terraform.io/docs/registry/api.html#download-source-code-for-a-specific-module-version
-router.get('/:namespace/:name/:provider/:version/download', async (req, res, next) => {
+router.get('/:namespace/:name/:provider/:version/download', authMiddleware, async (req, res, next) => {
   const options = { ...req.params };
 
   const module = await findOneModule(options);
@@ -20,7 +21,7 @@ router.get('/:namespace/:name/:provider/:version/download', async (req, res, nex
 });
 
 // https://www.terraform.io/docs/registry/api.html#download-the-latest-version-of-a-module
-router.get('/:namespace/:name/:provider/download', async (req, res, next) => {
+router.get('/:namespace/:name/:provider/download', authMiddleware, async (req, res, next) => {
   const options = { ...req.params };
 
   const module = await getModuleLatestVersion(options);
