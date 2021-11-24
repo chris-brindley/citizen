@@ -4,10 +4,11 @@ FROM node:16 as build
 LABEL maintainer="outsideris@gmail.com"
 
 WORKDIR /citizen
-ADD . /citizen
 
+ADD package*.json /citizen
 RUN npm install
 
+ADD . /citizen
 RUN npm run build
 
 # final stage
