@@ -10,115 +10,67 @@ if (process.env.CITIZEN_STORAGE === 's3' && !S3_BUCKET) {
     + 'If running on AWS EC2 or ECS, IAM Roles may be used.');
 }
 
+const save = (res) => async (path, tarball) => {
+  debug(`save the ${res} into ${path}.`);
+
+  if (!path) { throw new Error('path is required.'); }
+  if (!tarball) { throw new Error('tarball is required.'); }
+
+  const params = {
+    Bucket: S3_BUCKET,
+    Key: `${res}s/${path}`,
+    Body: tarball,
+  };
+  const result = await s3.send(new PutObjectCommand(params));
+  return !!result.ETag;
+}
+
+const has = (res) => async (path) => {
+  const params = {
+    Bucket: S3_BUCKET,
+    Key: `${res}s/${path}`,
+  };
+
+  try {
+    const module = await s3.send(new GetObjectCommand(params));
+    if (module.Body) {
+      debug(`the ${res} already exist: ${path}.`);
+      return true;
+    }
+  } catch (err) {
+    if (err.name === 'NoSuchKey') {
+      debug(`the ${res} doesn't exist: ${path}.`);
+      return false;
+    }
+
+    throw err;
+  }
+
+  debug(`the ${res} doesn't exist: ${path}.`);
+  return false;
+}
+
+const get = (res) => async (path) => {
+  debug(`get the ${res}: ${path}.`);
+  const params = {
+    Bucket: S3_BUCKET,
+    Key: `${res}s/${path}`,
+  };
+  const file = await s3.send(new GetObjectCommand(params));
+  return await new Promise((resolve, reject) => {
+    const chunks = [];
+    file.Body.on('data', (chunk) => chunks.push(chunk));
+    file.Body.on('error', reject);
+    file.Body.on('end', () => resolve(Buffer.concat(chunks)));
+  });
+}
+
 module.exports = {
   type: () => 's3',
-  saveModule: async (path, tarball) => {
-    debug(`save the module into ${path}.`);
-
-    if (!path) { throw new Error('path is required.'); }
-    if (!tarball) { throw new Error('tarball is required.'); }
-
-    const params = {
-      Bucket: S3_BUCKET,
-      Key: `modules/${path}`,
-      Body: tarball,
-    };
-    const result = await s3.send(new PutObjectCommand(params));
-
-    if (result.ETag) {
-      return true;
-    }
-    return false;
-  },
-  hasModule: async (path) => {
-    const params = {
-      Bucket: S3_BUCKET,
-      Key: `modules/${path}`,
-    };
-
-    try {
-      const module = await s3.send(new GetObjectCommand(params));
-      if (module.Body) {
-        debug(`the module already exist: ${path}.`);
-        return true;
-      }
-    } catch (err) {
-      if (err.name === 'NoSuchKey') {
-        debug(`the module doesn't exist: ${path}.`);
-        return false;
-      }
-
-      throw err;
-    }
-
-    debug(`the module doesn't exist: ${path}.`);
-    return false;
-  },
-  getModule: async (path) => {
-    debug(`get the module: ${path}.`);
-    const params = {
-      Bucket: S3_BUCKET,
-      Key: `modules/${path}`,
-    };
-    const chunks = [];
-    const file = await s3.send(new GetObjectCommand(params));
-    const content = await new Promise((resolve, reject) => {
-      file.Body.on('data', (chunk) => chunks.push(chunk));
-      file.Body.on('error', reject);
-      file.Body.on('end', () => resolve(chunks));
-    });
-
-    return content[0];
-  },
-  saveProvider: async (path, tarball) => {
-    debug(`save the provider into ${path}.`);
-
-    if (!path) { throw new Error('path is required.'); }
-    if (!tarball) { throw new Error('tarball is required.'); }
-
-    const params = {
-      Bucket: S3_BUCKET,
-      Key: `providers/${path}`,
-      Body: tarball,
-    };
-    const result = await s3.save(params);
-
-    if (result.ETag) {
-      return true;
-    }
-    return false;
-  },
-  hasProvider: async (path) => {
-    const params = {
-      Bucket: S3_BUCKET,
-      Key: `providers/${path}`,
-    };
-
-    try {
-      const module = await s3.get(params);
-      if (module.Body) {
-        debug(`the provider already exist: ${path}.`);
-        return true;
-      }
-    } catch (err) {
-      if (err.name === 'NoSuchKey') {
-        debug(`the provider doesn't exist: ${path}.`);
-        return false;
-      }
-
-      throw err;
-    }
-
-    debug(`the provider doesn't exist: ${path}.`);
-    return false;
-  },
-  getProvider: async (path) => {
-    debug(`get the provider: ${path}.`);
-    const params = {
-      Bucket: S3_BUCKET,
-      Key: `providers/${path}`,
-    };
-    const file = await s3.get(params);
-    return file.Body;
-  },
+  saveModule: save('module'),
+  hasModule: has('module'),
+  getModule: get('module'),
+  saveProvider: save('provider'),
+  hasProvider: has('provider'),
+  getProvider: get('provider'),
 };
