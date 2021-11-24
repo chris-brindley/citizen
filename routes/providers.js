@@ -3,6 +3,7 @@ const { Router } = require('express');
 const multiparty = require('multiparty');
 const { v4: uuid } = require('uuid');
 
+const { authMiddleware } = require('../lib/auth');
 const logger = require('../lib/logger');
 const { saveProvider: saveProviderStorage, getProvider } = require('../lib/storage');
 const {
@@ -16,7 +17,7 @@ const { extractShasum } = require('../lib/util');
 const router = Router();
 
 // register a provider with version
-router.post('/:namespace/:type/:version', (req, res, next) => {
+router.post('/:namespace/:type/:version', authMiddleware, (req, res, next) => {
   const {
     namespace,
     type,
@@ -149,7 +150,7 @@ router.post('/:namespace/:type/:version', (req, res, next) => {
 });
 
 // https://www.terraform.io/docs/internals/provider-registry-protocol.html#list-available-versions
-router.get('/:namespace/:type/versions', async (req, res, next) => {
+router.get('/:namespace/:type/versions', authMiddleware, async (req, res, next) => {
   const options = { ...req.params };
 
   const versions = await getProviderVersions(options);
@@ -163,7 +164,7 @@ router.get('/:namespace/:type/versions', async (req, res, next) => {
 });
 
 // https://www.terraform.io/docs/internals/provider-registry-protocol.html#find-a-provider-package
-router.get('/:namespace/:type/:version/download/:os/:arch', async (req, res, next) => {
+router.get('/:namespace/:type/:version/download/:os/:arch', authMiddleware, async (req, res, next) => {
   const options = { ...req.params };
 
   const providerPackage = await findProviderPackage(options);
